@@ -1,96 +1,119 @@
-# Stellar Payment Hub - Backend (Level 3: Orange Belt)
+# Stellar Payment Hub — Backend & Event Synchronizer
 
 [![Backend CI](https://github.com/Stellar-Payment-Hub/stellar-payment-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/Stellar-Payment-Hub/stellar-payment-backend/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Stellar Network](https://img.shields.io/badge/Stellar-Testnet-blueviolet)](https://stellar.org)
+[![Node.js](https://img.shields.io/badge/Node.js-v20%20%7C%20v22-339933?logo=node.js)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript)](https://www.typescriptlang.org/)
+[![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express)](https://expressjs.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-10b981.svg)](LICENSE)
 
-Production-oriented backend synchronization layer and real-time payment hub for **Stellar Payment Hub**.
-
----
-
-## Level 3: Orange Belt Architecture
-
-In **Level 3**, the backend provides a layered architecture supporting individual and grouped payments:
-* **Multi-Recipient Settlement API**: Creation, tracking, and execution of multi-address settlements.
-* **Payment Requests Engine**: Creation and fulfillment tracking of shareable invoice links.
-* **Blockchain Transaction Ledger**: Indexing of confirmed native XLM, contract, and settlement transactions.
-* **Idempotent Event Processing Pipeline**: Deduplication across blockchain ledger sequences.
-* **Real-time SSE Hub**: Broadcasting real-time status changes for payments, settlements, and payment requests.
-* **Production Middleware**: Structured logging (`[INFO]`, `[WARN]`, `[ERROR]`), IP-based rate limiting, and centralized error handling.
+High-throughput, reliable backend synchronization layer and real-time event pipeline for the **Stellar Payment Hub**. Responsible for indexing on-chain Soroban contract events, managing multi-recipient settlements, servicing shareable invoice requests, and streaming real-time status updates via Server-Sent Events (SSE).
 
 ---
 
-## Layered Architecture Diagram
+## Architectural Topology
 
 ```text
-                        HTTP Clients (dApp / Web3)
-                                    │
-                                    ▼
-                +---------------------------------------+
-                |         Express API Gateway           |
-                |  (Request Logger + Rate Limiter)      |
-                +-------------------+-------------------+
-                                    │
-        +---------------------------+---------------------------+
-        │                           │                           │
-        ▼                           ▼                           ▼
-[ Payments Router ]       [ Settlements Router ]     [ Requests & Transactions ]
-        │                           │                           │
-        +---------------------------+---------------------------+
-                                    │
-                                    ▼
-                +---------------------------------------+
-                |        Repository & State Layer       |
-                |  (Payments, Settlements, Ledger Index)|
-                +-------------------+-------------------+
-                                    │
-                    +---------------+---------------+
-                    │                               │
-                    ▼                               ▼
-       [ Idempotent Deduplication ]      [ Server-Sent Events (SSE) ]
+                        dApp Clients (React / Wallets)
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────┐
+                │          Express API Gateway           │
+                │   • Request Correlation Logger         │
+                │   • IP In-Memory Rate Limiter          │
+                └────────────────────┬───────────────────┘
+                                     │
+         ┌───────────────────────────┼───────────────────────────┐
+         ▼                           ▼                           ▼
+[ Payments Router ]       [ Settlements Router ]     [ Invoices & Transactions ]
+         │                           │                           │
+         └───────────────────────────┼───────────────────────────┘
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────┐
+                │        Repository & Domain Layer       │
+                │  (PostgreSQL Model / In-Memory Store)  │
+                └────────────────────┬───────────────────┘
+                                     │
+                     ┌───────────────┴───────────────┐
+                     ▼                               ▼
+       ┌───────────────────────────┐   ┌───────────────────────────┐
+       │   Idempotency Engine      │   │   Server-Sent Events      │
+       │ Deduplication by Event ID │   │ Real-Time Broadcast Hub   │
+       └───────────────────────────┘   └───────────────────────────┘
 ```
 
 ---
 
-## API Endpoints
+## Key Capabilities
 
-### 1. Health & Status
-* `GET /health` &mdash; Returns service health and active Stellar network (`testnet`).
-
-### 2. Payments (Level 2 & 3)
-* `GET /api/payments` &mdash; List payments with query filters (`status`, `creator`, `recipient`).
-* `GET /api/payments/:id` &mdash; Retrieve single payment details and audit events.
-* `POST /api/payments` &mdash; Register/Index a payment.
-* `PATCH /api/payments/:id/status` &mdash; Update payment status.
-* `GET /api/payments/:id/events` &mdash; Retrieve event audit log.
-
-### 3. Settlements (Level 3 Multi-Address)
-* `GET /api/settlements` &mdash; List settlements with filters (`payer`, `status`).
-* `GET /api/settlements/:id` &mdash; Retrieve multi-recipient settlement details and child shares.
-* `POST /api/settlements` &mdash; Create a new multi-address settlement request (validates exact share sum).
-* `POST /api/settlements/:id/execute` &mdash; Complete settlement and record child payment IDs.
-* `POST /api/settlements/:id/cancel` &mdash; Cancel pending settlement.
-
-### 4. Payment Requests & Invoices
-* `POST /api/payment-requests` &mdash; Create a shareable payment request.
-* `GET /api/payment-requests/:id` &mdash; Retrieve request details.
-* `PATCH /api/payment-requests/:id/pay` &mdash; Record fulfillment with transaction hash.
-
-### 5. Blockchain Transactions
-* `GET /api/transactions` &mdash; List transaction history ledger.
-* `POST /api/transactions` &mdash; Record confirmed blockchain transaction.
-
-### 6. Events & Real-time Stream
-* `POST /api/events/process` &mdash; Idempotently process on-chain contract events.
-* `GET /api/payments/stream` &mdash; Real-time Server-Sent Events (SSE) stream.
+1. **Idempotent Soroban Event Processor**:
+   Guarantees that duplicate ledger events or retried webhook calls do not cause duplicate state records. Deduplication uses unique event fingerprints (`{transaction_hash}-{ledger}-{topic}`).
+2. **Multi-Recipient Settlement Aggregator**:
+   Validates batch payment distributions, verifies that recipient shares sum precisely to the total settlement amount, and aggregates child payment lifecycle states.
+3. **Shareable Invoice & Payment Request Engine**:
+   Generates secure payment requests with configurable expiration timestamps, reference memos, and settlement confirmation hooks.
+4. **Real-Time SSE Streaming**:
+   Push-based communication (`/api/payments/stream`) broadcasting status updates (`payment:created`, `payment:updated`, `settlement:created`, `settlement:updated`) directly to connected frontend clients.
+5. **Observability & Security**:
+   Structured JSON-ready logging (`INFO`, `WARN`, `ERROR`), endpoint-level input validation, rate limiting, and zero exposure of wallet private keys or secrets.
 
 ---
 
-## Automated Test Coverage
+## REST API Reference
+
+### 1. Health & Network
+* **`GET /health`**
+  Returns service status, uptime, and active Stellar network configuration.
+
+### 2. Multi-Address Settlements
+* **`GET /api/settlements`**
+  Query parameters: `payer`, `status`. Returns paginated settlement records.
+* **`GET /api/settlements/:id`**
+  Returns full settlement metadata, total amount, payer, status, and child recipient allocations.
+* **`POST /api/settlements`**
+  Creates a multi-address settlement. Validates that $\sum \text{recipients.amount} = \text{total\_amount}$.
+* **`POST /api/settlements/:id/execute`**
+  Finalizes settlement and records child payment references.
+* **`POST /api/settlements/:id/cancel`**
+  Cancels a pending settlement.
+
+### 3. Tracked Payments
+* **`GET /api/payments`**
+  Query parameters: `status`, `creator`, `recipient`.
+* **`GET /api/payments/:id`**
+  Fetches payment details and complete audit event timeline.
+* **`POST /api/payments`**
+  Registers and indexes an on-chain payment.
+* **`PATCH /api/payments/:id/status`**
+  Updates status with state machine transition checks.
+* **`GET /api/payments/:id/events`**
+  Returns chronological lifecycle events.
+
+### 4. Invoices & Payment Requests
+* **`POST /api/payment-requests`**
+  Creates a shareable invoice with requester address, amount, and reference memo.
+* **`GET /api/payment-requests/:id`**
+  Fetches request details and active/paid/expired status.
+* **`PATCH /api/payment-requests/:id/pay`**
+  Marks request as fulfilled with payer address and transaction hash.
+
+### 5. Transaction Ledger & Real-Time Stream
+* **`GET /api/transactions`**
+  Returns indexed transaction history with explorer-verifiable hashes.
+* **`POST /api/transactions`**
+  Records on-chain confirmed transactions.
+* **`GET /api/payments/stream`**
+  Subscribes to live Server-Sent Events (SSE).
+
+---
+
+## Automated Test Suites
 
 ```bash
 npm test
 ```
+
+### Test Output
 
 ```text
  ✓ tests/health.test.ts (1 test)
@@ -99,6 +122,44 @@ npm test
  ✓ tests/settlements.test.ts (4 tests)
  ✓ tests/payments.test.ts (6 tests)
 
- Test Files  5 passed (5)
-      Tests  16 passed (16)
+Test Files  5 passed (5)
+     Tests  16 passed (16)
 ```
+
+---
+
+## Local Development & Setup
+
+```bash
+# 1. Clone repository
+git clone https://github.com/Stellar-Payment-Hub/stellar-payment-backend.git
+cd stellar-payment-backend
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment
+cp .env.example .env
+
+# 4. Run automated tests
+npm test
+
+# 5. Build TypeScript
+npm run build
+
+# 6. Start server
+npm run dev
+```
+
+---
+
+## Environment Variables
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `PORT` | HTTP Server port | `3001` |
+| `NODE_ENV` | Runtime environment | `development` |
+| `STELLAR_NETWORK` | Stellar network target | `testnet` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/stellar_hub` |
+| `PAYMENT_REGISTRY_CONTRACT` | Soroban Payment Registry ID | `CCBUEU4J4YXGSWURDMKUONPNGQ4ETBACWO5PC7IL5H4DVNYWJLYFETGY` |
+| `SETTLEMENT_ROUTER_CONTRACT`| Soroban Settlement Router ID | `CBX7MKY4M2PQL5WR6B4GXZV8KTD2NQ3J9F1H5C7S0L8D4Y6A2V9W7U1E` |
