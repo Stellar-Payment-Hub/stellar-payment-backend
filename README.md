@@ -1,104 +1,61 @@
-# Stellar Payment Hub - Backend
+# Stellar Payment Hub - Backend (Level 2: Yellow Belt)
 
 [![Backend CI](https://github.com/Stellar-Payment-Hub/stellar-payment-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/Stellar-Payment-Hub/stellar-payment-backend/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stellar Network](https://img.shields.io/badge/Stellar-Testnet-blueviolet)](https://stellar.org)
 
-Backend service foundation for **Stellar Payment Hub**.
+Backend service foundation and real-time payment synchronization layer for **Stellar Payment Hub**.
 
 ---
 
-## Level 1: White Belt Status
+## Level 2: Yellow Belt Capabilities
 
-In **Level 1**, this repository establishes the core backend foundation:
-* **Service Health API**: `GET /health` with service status and network state (`testnet`).
-* **Clean Layered Architecture**: Structured routes, middleware, and type-safe environment configuration.
-* **Testing & CI**: Unit test suite with Supertest and automated GitHub Actions verification.
-
-In later levels, this repository will evolve into the real-time payment tracker, ledger indexing engine, and payment notification webhook service.
-
----
-
-## Architecture Overview
-
-```text
-stellar-payment-backend/
-├── src/
-│   ├── config/
-│   │   └── env.ts           # Type-safe environment variable management
-│   ├── middleware/
-│   │   └── error.ts         # Centralized error handler
-│   ├── routes/
-│   │   └── health.ts        # GET /health route
-│   ├── app.ts               # Express application
-│   └── server.ts            # Entrypoint
-├── tests/
-│   └── health.test.ts       # Health endpoint test
-├── docs/
-│   └── architecture.md      # Backend evolution doc
-├── .github/
-│   └── workflows/
-│       └── ci.yml           # GitHub Actions CI
-├── .env.example
-├── package.json
-├── tsconfig.json
-└── README.md
-```
+In **Level 2**, this backend acts as the synchronization and indexing hub:
+* **Payment Indexing API**: CRUD management of on-chain and off-chain payment records.
+* **Idempotent Event Processing**: Deduplication engine preventing duplicate ledger event writes.
+* **Real-time Event Stream (SSE)**: Server-Sent Events stream (`GET /api/payments/stream`) pushing live status updates to frontend clients.
+* **Audit Trail**: Tracking lifecycle events for every payment (`PaymentCreated`, `PaymentUpdated`, `PaymentCompleted`, `PaymentCancelled`).
 
 ---
 
-## API Endpoints (Level 1)
+## API Endpoints
 
-### `GET /health`
-Returns the operational health of the backend and active Stellar network.
+### 1. Health & Status
+* `GET /health` &mdash; Returns service health and active Stellar network (`testnet`).
 
-**Response**:
-```json
-{
-  "status": "ok",
-  "service": "stellar-payment-backend",
-  "network": "testnet"
-}
-```
+### 2. Payments
+* `GET /api/payments` &mdash; List payments.
+  * Query parameters: `status`, `creator`, `recipient`
+* `GET /api/payments/:id` &mdash; Retrieve single payment details and audit events.
+* `POST /api/payments` &mdash; Register/Index a new payment.
+* `PATCH /api/payments/:id/status` &mdash; Update payment status (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`).
+* `GET /api/payments/:id/events` &mdash; Retrieve event history for a specific payment.
+
+### 3. Events & Real-time Synchronization
+* `POST /api/events/process` &mdash; Ingest and process a contract event with idempotency.
+* `GET /api/payments/stream` &mdash; Server-Sent Events (SSE) stream for real-time frontend updates.
 
 ---
 
 ## Local Development
 
-### 1. Install Dependencies
 ```bash
+# Install dependencies
 npm install
-```
 
-### 2. Configure Environment
-```bash
+# Configure environment
 cp .env.example .env
-```
 
-### 3. Run Development Server
-```bash
+# Run development server
 npm run dev
-```
-The server will start on `http://localhost:4000`.
 
-### 4. Run Tests
-```bash
+# Run automated tests
 npm test
-```
 
-### 5. Build for Production
-```bash
+# Build for production
 npm run build
 npm start
 ```
-
----
-
-## Roadmap
-
-* **Level 1 (Foundation)**: Health API, environment config, error middleware, CI pipeline.
-* **Level 2 (Yellow Belt)**: Payment indexing, transaction hash verification, webhook alerts.
-* **Level 3 (Black Belt)**: Real-time WebSocket subscriptions, split payment calculations, transaction audit database.
 
 ---
 
