@@ -10,10 +10,17 @@
     "test": "vitest run",
     "lint": "eslint src/ --ext .ts"
   },
-  "keywords": ["stellar", "payment", "backend", "testnet", "soroban"],
+  "keywords": [
+    "stellar",
+    "payment",
+    "backend",
+    "testnet",
+    "soroban"
+  ],
   "author": "Daniel Omoloba <274010761+omolobamoyinoluwa-max@users.noreply.github.com>",
   "license": "MIT",
   "dependencies": {
+    "@stellar/stellar-sdk": "^17.2.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2"
