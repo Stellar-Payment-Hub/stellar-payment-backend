@@ -151,11 +151,11 @@ The API adheres to standard HTTP status codes and structured error responses:
 | HTTP Status | Error Code | Common Cause | Recovery / Handling |
 | :---: | :--- | :--- | :--- |
 | **`400`** | `INVALID_INPUT` | Missing required fields, non-numeric amount, or invalid address | Check payload parameters and format addresses as valid 56-char Stellar keys |
-| **`400`** | `SUM_MISMATCH` | $\sum \text{recipient amounts} \ne \text{total\_amount}$ | Adjust recipient shares to match total settlement amount |
+| **`400`** | `SUM_MISMATCH` | `sum(recipient amounts) != total_amount` | Adjust recipient shares to match total settlement amount |
 | **`400`** | `DUPLICATE_RECIPIENT` | Duplicate recipient address in batch settlement | Deduplicate recipient list before submission |
 | **`404`** | `NOT_FOUND` | Specified payment or settlement ID does not exist | Verify ID or check if created in a different environment |
 | **`409`** | `IDEMPOTENT_CONFLICT` | An event with the same ID/hash has already been processed | Safe to ignore; return existing persisted record |
-| **`422`** | `INVALID_TRANSITION` | Attempted illegal state change (e.g. `COMPLETED` $\to$ `PENDING`) | Adhere to permitted transition order |
+| **`422`** | `INVALID_TRANSITION` | Attempted illegal state change (e.g. `COMPLETED` -> `PENDING`) | Adhere to permitted transition order |
 | **`429`** | `RATE_LIMIT_EXCEEDED` | Request threshold exceeded (>100 req / 15 min per IP) | Back off requests and adhere to `Retry-After` header |
 | **`500`** | `INTERNAL_ERROR` | Uncaught server exception or database timeout | Retry with exponential backoff |
 | **`503`** | `RPC_UNAVAILABLE` | Stellar Horizon or Soroban RPC endpoint is unreachable | Check network status or configure fallback RPC URL |
