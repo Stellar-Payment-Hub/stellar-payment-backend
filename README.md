@@ -192,8 +192,8 @@ Test Files  5 passed (5)
 | `NODE_ENV` | Runtime environment (`development` / `production`) | `development` | Yes |
 | `STELLAR_NETWORK` | Target Stellar network | `testnet` | Yes |
 | `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/hub` | Yes |
-| `PAYMENT_REGISTRY_CONTRACT` | Deployed Soroban Payment Registry ID | `CCBUEU4J4YXGSWURDMKUONPNGQ4ETBACWO5PC7IL5H4DVNYWJLYFETGY` | Yes |
-| `SETTLEMENT_ROUTER_CONTRACT`| Deployed Soroban Settlement Router ID | `CBX7MKY4M2PQL5WR6B4GXZV8KTD2NQ3J9F1H5C7S0L8D4Y6A2V9W7U1E` | Yes |
+| `PAYMENT_REGISTRY_CONTRACT` | Deployed Soroban Payment Registry ID | `CD5D7OITCBFJJDHQVEZ6Y7MYIZSWEVOCQO4ES7WZEWW3S37IGUVZAI7S` | Yes |
+| `SETTLEMENT_ROUTER_CONTRACT`| Deployed Soroban Settlement Router ID | `CAGDS3H6GSNB7FSSFFDAAO5MX3GNVCUBNKIVUI52TAK7PXUUEXYCM66E` | Yes |
 | `STELLAR_RPC_URL` | Soroban RPC provider endpoint | `https://soroban-testnet.stellar.org` | Yes |
 | `CORS_ORIGIN` | Allowed CORS origin(s) | `*` (development) | Yes |
 
