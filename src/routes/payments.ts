@@ -73,7 +73,7 @@ paymentsRouter.post('/api/payments', (req: Request, res: Response) => {
     memo: memo || '',
     status: 'PENDING',
     contract_address:
-      contract_address || 'CCBUEU4J4YXGSWURDMKUONPNGQ4ETBACWO5PC7IL5H4DVNYWJLYFETGY',
+      contract_address || 'CD5D7OITCBFJJDHQVEZ6Y7MYIZSWEVOCQO4ES7WZEWW3S37IGUVZAI7S',
     transaction_hash,
     ledger,
     on_chain_id,
