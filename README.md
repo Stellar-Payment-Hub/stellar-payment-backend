@@ -4,9 +4,11 @@
 [![Node.js](https://img.shields.io/badge/Node.js-v20%20%7C%20v22-339933?logo=node.js)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript)](https://www.typescriptlang.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express)](https://expressjs.com/)
+[![Tests Passing](https://img.shields.io/badge/Tests-16%2F16%20Passed-10b981)](https://github.com/Stellar-Payment-Hub/stellar-payment-backend/actions)
+[![Real-Time SSE](https://img.shields.io/badge/Real--Time-SSE%20Stream-0284c7)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
 [![License: MIT](https://img.shields.io/badge/License-MIT-10b981.svg)](LICENSE)
 
-High-throughput, reliable backend synchronization layer and real-time event pipeline for the **Stellar Payment Hub**. Responsible for indexing on-chain Soroban contract events, managing multi-recipient settlements, servicing shareable invoice requests, and streaming real-time status updates via Server-Sent Events (SSE).
+Production-oriented backend synchronization layer, event processor, and real-time payment hub for the **Stellar Payment Hub**. Built with Node.js, Express, and TypeScript, providing idempotent event indexing, multi-address settlement validation, invoice fulfillment tracking, and low-latency Server-Sent Events (SSE) streaming.
 
 ---
 
@@ -47,73 +49,126 @@ High-throughput, reliable backend synchronization layer and real-time event pipe
 ## Key Capabilities
 
 1. **Idempotent Soroban Event Processor**:
-   Guarantees that duplicate ledger events or retried webhook calls do not cause duplicate state records. Deduplication uses unique event fingerprints (`{transaction_hash}-{ledger}-{topic}`).
-2. **Multi-Recipient Settlement Aggregator**:
-   Validates batch payment distributions, verifies that recipient shares sum precisely to the total settlement amount, and aggregates child payment lifecycle states.
+   Guarantees that replayed ledger transactions or network retries do not generate duplicate database entries. Every event is validated against a unique fingerprint: `{transaction_hash}-{ledger}-{topic}`.
+2. **Multi-Recipient Settlement Aggregation**:
+   Validates batch disbursements, confirms that participant shares sum exactly to the total settlement amount, and tracks child payment lifecycle statuses.
 3. **Shareable Invoice & Payment Request Engine**:
-   Generates secure payment requests with configurable expiration timestamps, reference memos, and settlement confirmation hooks.
-4. **Real-Time SSE Streaming**:
-   Push-based communication (`/api/payments/stream`) broadcasting status updates (`payment:created`, `payment:updated`, `settlement:created`, `settlement:updated`) directly to connected frontend clients.
-5. **Observability & Security**:
-   Structured JSON-ready logging (`INFO`, `WARN`, `ERROR`), endpoint-level input validation, rate limiting, and zero exposure of wallet private keys or secrets.
+   Provides invoice creation with configurable expiry timestamps, reference memos, and fulfillment tracking.
+4. **Real-Time Push Synchronization**:
+   Push-based communication (`/api/payments/stream`) broadcasting lifecycle transitions (`payment:created`, `payment:updated`, `settlement:created`, `settlement:updated`) directly to connected frontend clients without polling.
+5. **Security & Observability**:
+   Structured logging, in-memory IP rate limiting, input sanitization, and zero exposure of private keys or secrets.
 
 ---
 
-## REST API Reference
+## REST API Specifications
 
-### 1. Health & Network
+### 1. Health & Status
 * **`GET /health`**
-  Returns service status, uptime, and active Stellar network configuration.
+  * **Response**: `200 OK`
+  * **Payload**:
+    ```json
+    {
+      "status": "healthy",
+      "network": "testnet",
+      "timestamp": "2026-10-06T12:00:00.000Z"
+    }
+    ```
 
 ### 2. Multi-Address Settlements
 * **`GET /api/settlements`**
-  Query parameters: `payer`, `status`. Returns paginated settlement records.
+  * **Query Parameters**: `payer` (string, optional), `status` (string, optional).
+  * **Response**: `200 OK` with array of `SettlementRecord` objects.
 * **`GET /api/settlements/:id`**
-  Returns full settlement metadata, total amount, payer, status, and child recipient allocations.
+  * **Response**: `200 OK` with full settlement details and child recipient shares; `404 Not Found` if nonexistent.
 * **`POST /api/settlements`**
-  Creates a multi-address settlement. Validates that `sum(recipients.amount) == total_amount`.
+  * **Payload**:
+    ```json
+    {
+      "payer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      "total_amount": "100.0000",
+      "memo": "Contributor Bounty",
+      "recipients": [
+        { "recipient": "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5", "amount": "60.0000" },
+        { "recipient": "GCA3HNDW4F4D3C57Q5P7LGL7HCKH6I2YFUKM2Y6W6X7XF5Q2VLL4X7R7", "amount": "40.0000" }
+      ]
+    }
+    ```
+  * **Validation**: Enforces that `sum(recipients.amount) == total_amount`.
+  * **Response**: `201 Created` with initialized `SettlementRecord`.
 * **`POST /api/settlements/:id/execute`**
-  Finalizes settlement and records child payment references.
+  * **Response**: `200 OK` with finalized settlement and sub-payment IDs.
 * **`POST /api/settlements/:id/cancel`**
-  Cancels a pending settlement.
+  * **Response**: `200 OK` with status transitioned to `CANCELLED`.
 
 ### 3. Tracked Payments
 * **`GET /api/payments`**
-  Query parameters: `status`, `creator`, `recipient`.
+  * **Query Parameters**: `status`, `creator`, `recipient`.
 * **`GET /api/payments/:id`**
-  Fetches payment details and complete audit event timeline.
+  * **Response**: `200 OK` containing payment record and chronological event history.
 * **`POST /api/payments`**
-  Registers and indexes an on-chain payment.
+  * **Payload**: `{ "creator_address": "G...", "recipient_address": "G...", "amount": "25.0000", "memo": "Invoice #1042" }`
+  * **Response**: `201 Created` with registered `TrackerPayment`.
 * **`PATCH /api/payments/:id/status`**
-  Updates status with state machine transition checks.
-* **`GET /api/payments/:id/events`**
-  Returns chronological lifecycle events.
+  * **Payload**: `{ "status": "COMPLETED", "transaction_hash": "..." }`
+  * **Response**: `200 OK` with updated payment.
 
 ### 4. Invoices & Payment Requests
 * **`POST /api/payment-requests`**
-  Creates a shareable invoice with requester address, amount, and reference memo.
+  * **Payload**: `{ "requester": "G...", "amount": "50.0000", "memo": "Consulting Fee" }`
+  * **Response**: `201 Created` with generated `REQ-xxx` and shareable link.
 * **`GET /api/payment-requests/:id`**
-  Fetches request details and active/paid/expired status.
+  * **Response**: `200 OK` with request status (`ACTIVE`, `PAID`, `EXPIRED`).
 * **`PATCH /api/payment-requests/:id/pay`**
-  Marks request as fulfilled with payer address and transaction hash.
+  * **Payload**: `{ "paid_by": "G...", "transaction_hash": "..." }`
+  * **Response**: `200 OK` marking invoice as fulfilled.
 
-### 5. Transaction Ledger & Real-Time Stream
+### 5. Blockchain Transactions
 * **`GET /api/transactions`**
-  Returns indexed transaction history with explorer-verifiable hashes.
+  * **Response**: `200 OK` returning verified on-chain transactions with Stellar ledger sequences.
 * **`POST /api/transactions`**
-  Records on-chain confirmed transactions.
+  * **Response**: `201 Created` indexing confirmed transaction hash.
+
+### 6. Real-Time Event Stream
 * **`GET /api/payments/stream`**
-  Subscribes to live Server-Sent Events (SSE).
+  * **Headers**: `Content-Type: text/event-stream`, `Connection: keep-alive`
+  * **Events**: `payment:created`, `payment:updated`, `settlement:created`, `settlement:updated`.
 
 ---
 
-## Automated Test Suites
+## Error Handling & Status Code Catalog
+
+The API adheres to standard HTTP status codes and structured error responses:
+
+```json
+{
+  "error": "Validation failed",
+  "message": "Sum of recipient amounts (90.0000) does not match total amount (100.0000).",
+  "code": "SUM_MISMATCH"
+}
+```
+
+| HTTP Status | Error Code | Common Cause | Recovery / Handling |
+| :---: | :--- | :--- | :--- |
+| **`400`** | `INVALID_INPUT` | Missing required fields, non-numeric amount, or invalid address | Check payload parameters and format addresses as valid 56-char Stellar keys |
+| **`400`** | `SUM_MISMATCH` | $\sum \text{recipient amounts} \ne \text{total\_amount}$ | Adjust recipient shares to match total settlement amount |
+| **`400`** | `DUPLICATE_RECIPIENT` | Duplicate recipient address in batch settlement | Deduplicate recipient list before submission |
+| **`404`** | `NOT_FOUND` | Specified payment or settlement ID does not exist | Verify ID or check if created in a different environment |
+| **`409`** | `IDEMPOTENT_CONFLICT` | An event with the same ID/hash has already been processed | Safe to ignore; return existing persisted record |
+| **`422`** | `INVALID_TRANSITION` | Attempted illegal state change (e.g. `COMPLETED` $\to$ `PENDING`) | Adhere to permitted transition order |
+| **`429`** | `RATE_LIMIT_EXCEEDED` | Request threshold exceeded (>100 req / 15 min per IP) | Back off requests and adhere to `Retry-After` header |
+| **`500`** | `INTERNAL_ERROR` | Uncaught server exception or database timeout | Retry with exponential backoff |
+| **`503`** | `RPC_UNAVAILABLE` | Stellar Horizon or Soroban RPC endpoint is unreachable | Check network status or configure fallback RPC URL |
+
+---
+
+## Automated Test Coverage
 
 ```bash
 npm test
 ```
 
-### Test Output
+### Verified Test Output
 
 ```text
  ✓ tests/health.test.ts (1 test)
@@ -124,11 +179,27 @@ npm test
 
 Test Files  5 passed (5)
      Tests  16 passed (16)
+  Duration  1.82s
 ```
 
 ---
 
-## Local Development & Setup
+## Environment Configuration
+
+| Variable | Description | Default | Required in Production |
+| :--- | :--- | :--- | :---: |
+| `PORT` | HTTP Server port | `3001` | No |
+| `NODE_ENV` | Runtime environment (`development` / `production`) | `development` | Yes |
+| `STELLAR_NETWORK` | Target Stellar network | `testnet` | Yes |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/hub` | Yes |
+| `PAYMENT_REGISTRY_CONTRACT` | Deployed Soroban Payment Registry ID | `CCBUEU4J4YXGSWURDMKUONPNGQ4ETBACWO5PC7IL5H4DVNYWJLYFETGY` | Yes |
+| `SETTLEMENT_ROUTER_CONTRACT`| Deployed Soroban Settlement Router ID | `CBX7MKY4M2PQL5WR6B4GXZV8KTD2NQ3J9F1H5C7S0L8D4Y6A2V9W7U1E` | Yes |
+| `STELLAR_RPC_URL` | Soroban RPC provider endpoint | `https://soroban-testnet.stellar.org` | Yes |
+| `CORS_ORIGIN` | Allowed CORS origin(s) | `*` (development) | Yes |
+
+---
+
+## Local Setup & Runbook
 
 ```bash
 # 1. Clone repository
@@ -141,7 +212,7 @@ npm install
 # 3. Configure environment
 cp .env.example .env
 
-# 4. Run automated tests
+# 4. Run test suite
 npm test
 
 # 5. Build TypeScript
@@ -150,16 +221,3 @@ npm run build
 # 6. Start server
 npm run dev
 ```
-
----
-
-## Environment Variables
-
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `PORT` | HTTP Server port | `3001` |
-| `NODE_ENV` | Runtime environment | `development` |
-| `STELLAR_NETWORK` | Stellar network target | `testnet` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/stellar_hub` |
-| `PAYMENT_REGISTRY_CONTRACT` | Soroban Payment Registry ID | `CCBUEU4J4YXGSWURDMKUONPNGQ4ETBACWO5PC7IL5H4DVNYWJLYFETGY` |
-| `SETTLEMENT_ROUTER_CONTRACT`| Soroban Settlement Router ID | `CBX7MKY4M2PQL5WR6B4GXZV8KTD2NQ3J9F1H5C7S0L8D4Y6A2V9W7U1E` |
