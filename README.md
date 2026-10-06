@@ -71,7 +71,7 @@ High-throughput, reliable backend synchronization layer and real-time event pipe
 * **`GET /api/settlements/:id`**
   Returns full settlement metadata, total amount, payer, status, and child recipient allocations.
 * **`POST /api/settlements`**
-  Creates a multi-address settlement. Validates that $\sum \text{recipients.amount} = \text{total\_amount}$.
+  Creates a multi-address settlement. Validates that `sum(recipients.amount) == total_amount`.
 * **`POST /api/settlements/:id/execute`**
   Finalizes settlement and records child payment references.
 * **`POST /api/settlements/:id/cancel`**
