@@ -1,20 +1,54 @@
-# Stellar Payment Hub - Backend (Level 2: Yellow Belt)
+# Stellar Payment Hub - Backend (Level 3: Orange Belt)
 
 [![Backend CI](https://github.com/Stellar-Payment-Hub/stellar-payment-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/Stellar-Payment-Hub/stellar-payment-backend/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stellar Network](https://img.shields.io/badge/Stellar-Testnet-blueviolet)](https://stellar.org)
 
-Backend service foundation and real-time payment synchronization layer for **Stellar Payment Hub**.
+Production-oriented backend synchronization layer and real-time payment hub for **Stellar Payment Hub**.
 
 ---
 
-## Level 2: Yellow Belt Capabilities
+## Level 3: Orange Belt Architecture
 
-In **Level 2**, this backend acts as the synchronization and indexing hub:
-* **Payment Indexing API**: CRUD management of on-chain and off-chain payment records.
-* **Idempotent Event Processing**: Deduplication engine preventing duplicate ledger event writes.
-* **Real-time Event Stream (SSE)**: Server-Sent Events stream (`GET /api/payments/stream`) pushing live status updates to frontend clients.
-* **Audit Trail**: Tracking lifecycle events for every payment (`PaymentCreated`, `PaymentUpdated`, `PaymentCompleted`, `PaymentCancelled`).
+In **Level 3**, the backend provides a layered architecture supporting individual and grouped payments:
+* **Multi-Recipient Settlement API**: Creation, tracking, and execution of multi-address settlements.
+* **Payment Requests Engine**: Creation and fulfillment tracking of shareable invoice links.
+* **Blockchain Transaction Ledger**: Indexing of confirmed native XLM, contract, and settlement transactions.
+* **Idempotent Event Processing Pipeline**: Deduplication across blockchain ledger sequences.
+* **Real-time SSE Hub**: Broadcasting real-time status changes for payments, settlements, and payment requests.
+* **Production Middleware**: Structured logging (`[INFO]`, `[WARN]`, `[ERROR]`), IP-based rate limiting, and centralized error handling.
+
+---
+
+## Layered Architecture Diagram
+
+```text
+                        HTTP Clients (dApp / Web3)
+                                    │
+                                    ▼
+                +---------------------------------------+
+                |         Express API Gateway           |
+                |  (Request Logger + Rate Limiter)      |
+                +-------------------+-------------------+
+                                    │
+        +---------------------------+---------------------------+
+        │                           │                           │
+        ▼                           ▼                           ▼
+[ Payments Router ]       [ Settlements Router ]     [ Requests & Transactions ]
+        │                           │                           │
+        +---------------------------+---------------------------+
+                                    │
+                                    ▼
+                +---------------------------------------+
+                |        Repository & State Layer       |
+                |  (Payments, Settlements, Ledger Index)|
+                +-------------------+-------------------+
+                                    │
+                    +---------------+---------------+
+                    │                               │
+                    ▼                               ▼
+       [ Idempotent Deduplication ]      [ Server-Sent Events (SSE) ]
+```
 
 ---
 
@@ -23,42 +57,48 @@ In **Level 2**, this backend acts as the synchronization and indexing hub:
 ### 1. Health & Status
 * `GET /health` &mdash; Returns service health and active Stellar network (`testnet`).
 
-### 2. Payments
-* `GET /api/payments` &mdash; List payments.
-  * Query parameters: `status`, `creator`, `recipient`
+### 2. Payments (Level 2 & 3)
+* `GET /api/payments` &mdash; List payments with query filters (`status`, `creator`, `recipient`).
 * `GET /api/payments/:id` &mdash; Retrieve single payment details and audit events.
-* `POST /api/payments` &mdash; Register/Index a new payment.
-* `PATCH /api/payments/:id/status` &mdash; Update payment status (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`).
-* `GET /api/payments/:id/events` &mdash; Retrieve event history for a specific payment.
+* `POST /api/payments` &mdash; Register/Index a payment.
+* `PATCH /api/payments/:id/status` &mdash; Update payment status.
+* `GET /api/payments/:id/events` &mdash; Retrieve event audit log.
 
-### 3. Events & Real-time Synchronization
-* `POST /api/events/process` &mdash; Ingest and process a contract event with idempotency.
-* `GET /api/payments/stream` &mdash; Server-Sent Events (SSE) stream for real-time frontend updates.
+### 3. Settlements (Level 3 Multi-Address)
+* `GET /api/settlements` &mdash; List settlements with filters (`payer`, `status`).
+* `GET /api/settlements/:id` &mdash; Retrieve multi-recipient settlement details and child shares.
+* `POST /api/settlements` &mdash; Create a new multi-address settlement request (validates exact share sum).
+* `POST /api/settlements/:id/execute` &mdash; Complete settlement and record child payment IDs.
+* `POST /api/settlements/:id/cancel` &mdash; Cancel pending settlement.
+
+### 4. Payment Requests & Invoices
+* `POST /api/payment-requests` &mdash; Create a shareable payment request.
+* `GET /api/payment-requests/:id` &mdash; Retrieve request details.
+* `PATCH /api/payment-requests/:id/pay` &mdash; Record fulfillment with transaction hash.
+
+### 5. Blockchain Transactions
+* `GET /api/transactions` &mdash; List transaction history ledger.
+* `POST /api/transactions` &mdash; Record confirmed blockchain transaction.
+
+### 6. Events & Real-time Stream
+* `POST /api/events/process` &mdash; Idempotently process on-chain contract events.
+* `GET /api/payments/stream` &mdash; Real-time Server-Sent Events (SSE) stream.
 
 ---
 
-## Local Development
+## Automated Test Coverage
 
 ```bash
-# Install dependencies
-npm install
-
-# Configure environment
-cp .env.example .env
-
-# Run development server
-npm run dev
-
-# Run automated tests
 npm test
-
-# Build for production
-npm run build
-npm start
 ```
 
----
+```text
+ ✓ tests/health.test.ts (1 test)
+ ✓ tests/transactions.test.ts (2 tests)
+ ✓ tests/payment-requests.test.ts (3 tests)
+ ✓ tests/settlements.test.ts (4 tests)
+ ✓ tests/payments.test.ts (6 tests)
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+ Test Files  5 passed (5)
+      Tests  16 passed (16)
+```
