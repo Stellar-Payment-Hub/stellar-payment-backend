@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 
-describe('Settlements API (Level 3: Multi-Recipient Settlement)', () => {
+describe('Settlements API (Multi-Recipient Settlement)', () => {
   it('GET /api/settlements returns initial seeded settlements', async () => {
     const res = await request(app).get('/api/settlements');
     expect(res.status).toBe(200);

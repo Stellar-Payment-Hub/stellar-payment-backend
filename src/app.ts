@@ -16,11 +16,11 @@ app.use(express.json());
 app.use(requestLogger);
 app.use(rateLimiter);
 
-// Level 1 & 2 Routes
+// Core Routes
 app.use('/', healthRouter);
 app.use('/', paymentsRouter);
 
-// Level 3 Advanced Routes
+// Settlement, Invoice & Transaction Routes
 app.use('/', settlementsRouter);
 app.use('/', paymentRequestsRouter);
 app.use('/', transactionsRouter);

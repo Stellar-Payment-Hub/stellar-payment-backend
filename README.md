@@ -156,7 +156,7 @@ The API adheres to standard HTTP status codes and structured error responses:
 | **`404`** | `NOT_FOUND` | Specified payment or settlement ID does not exist | Verify ID or check if created in a different environment |
 | **`409`** | `IDEMPOTENT_CONFLICT` | An event with the same ID/hash has already been processed | Safe to ignore; return existing persisted record |
 | **`422`** | `INVALID_TRANSITION` | Attempted illegal state change (e.g. `COMPLETED` -> `PENDING`) | Adhere to permitted transition order |
-| **`429`** | `RATE_LIMIT_EXCEEDED` | Request threshold exceeded (>100 req / 15 min per IP) | Back off requests and adhere to `Retry-After` header |
+| **`429`** | `RATE_LIMIT_EXCEEDED` | Request threshold exceeded (> 100 req / 15 min per IP) | Back off requests and adhere to `Retry-After` header |
 | **`500`** | `INTERNAL_ERROR` | Uncaught server exception or database timeout | Retry with exponential backoff |
 | **`503`** | `RPC_UNAVAILABLE` | Stellar Horizon or Soroban RPC endpoint is unreachable | Check network status or configure fallback RPC URL |
 

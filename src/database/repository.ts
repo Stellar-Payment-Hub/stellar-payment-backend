@@ -200,7 +200,7 @@ class PaymentRepository {
     return payment;
   }
 
-  // --- Settlement Methods (Level 3) ---
+  // --- Settlement Methods ---
   public listSettlements(filters?: { payer?: string; status?: SettlementStatus }): Settlement[] {
     let results = Array.from(this.settlements.values());
     if (filters?.payer) {
@@ -285,7 +285,7 @@ class PaymentRepository {
     return settlement;
   }
 
-  // --- Payment Request Methods (Level 3) ---
+  // --- Payment Request Methods ---
   public createPaymentRequest(data: {
     requester: string;
     amount: string;
@@ -330,7 +330,7 @@ class PaymentRepository {
     return req;
   }
 
-  // --- Transaction Records (Level 3) ---
+  // --- Transaction Records ---
   public listTransactions(): TransactionRecord[] {
     return Array.from(this.transactions.values()).sort((a, b) =>
       a.created_at < b.created_at ? 1 : -1
