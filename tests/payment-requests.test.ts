@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 
-describe('Payment Requests API (Level 3: Payment Requests)', () => {
+describe('Payment Requests API (Invoices & Requests)', () => {
   it('POST /api/payment-requests creates a shareable payment request', async () => {
     const res = await request(app).post('/api/payment-requests').send({
       requester: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',

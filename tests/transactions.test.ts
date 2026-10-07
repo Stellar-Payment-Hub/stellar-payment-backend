@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 
-describe('Transactions API (Level 3: Transaction History)', () => {
+describe('Transactions API (Transaction History & Indexing)', () => {
   it('GET /api/transactions returns blockchain transaction ledger', async () => {
     const res = await request(app).get('/api/transactions');
     expect(res.status).toBe(200);
