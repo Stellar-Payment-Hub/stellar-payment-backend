@@ -12,6 +12,38 @@ Production-oriented backend synchronization layer, event processor, and real-tim
 
 ---
 
+## 📸 Product & Backend Synchronization in Action
+
+Visualizing real-time event indexing, SSE sync, and operational telemetry:
+
+### 1. Enterprise Dashboard & Operational Telemetry
+Telemetry reporting real-time Stellar Horizon balance tracking, Soroban smart contract status, and active backend connectivity.
+
+![Enterprise Dashboard & Telemetry](docs/screenshots/01_dashboard_telemetry.png)
+
+---
+
+### 2. Payment Tracker 2.0 & Real-Time SSE Recipient Tree
+Powered by the `/api/payments/stream` Server-Sent Events endpoint, pushing settlement lifecycle transitions and child payment breakdowns (`SETTLE-001` → `PAY-SUB-1`, `PAY-SUB-2`, `PAY-SUB-3`) without client polling.
+
+![Payment Tracker & Real-Time SSE Recipient Tree](docs/screenshots/06_payment_tracker_tree.png)
+
+---
+
+### 3. Invoices & Shareable Payment Request Manager
+Backend repository management for shareable invoice records, custom expiration windows, and counterparty fulfillment tracking.
+
+![Invoices & Payment Requests](docs/screenshots/05_invoices_payment_requests.png)
+
+---
+
+### 4. Indexed Transaction Ledger
+Deduplicated, idempotent ledger transaction recording with real-time auditability.
+
+![Transaction Ledger](docs/screenshots/08_transaction_ledger.png)
+
+---
+
 ## Architectural Topology
 
 ```text
