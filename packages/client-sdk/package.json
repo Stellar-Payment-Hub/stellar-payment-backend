@@ -1,0 +1,13 @@
+{
+  "name": "@stellar-payment-hub/client",
+  "version": "1.0.0",
+  "description": "Official TypeScript SDK for Stellar Payment Hub",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": ["stellar", "soroban", "payments", "settlements", "sdk"],
+  "author": "omolobamoyinoluwa-max",
+  "license": "MIT"
+}
