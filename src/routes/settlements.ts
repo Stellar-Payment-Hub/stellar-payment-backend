@@ -1,3 +1,4 @@
+import { calculateEqualSplit } from '../services/split-calculator';
 import { Router, Request, Response } from 'express';
 import { paymentRepository } from '../database/repository';
 import { paymentStream } from '../realtime/payment-stream';
@@ -132,4 +133,19 @@ settlementsRouter.post('/api/settlements/:id/cancel', (req: Request, res: Respon
     status: 'ok',
     settlement,
   });
+});
+
+// Calculate split bill distribution with Stroop remainder safe arithmetic
+settlementsRouter.post('/api/settlements/calculate-split', (req: Request, res: Response) => {
+  const { totalAmountXlm, recipients } = req.body;
+  if (!totalAmountXlm || !Array.isArray(recipients) || recipients.length === 0) {
+    return res.status(400).json({ error: 'totalAmountXlm and recipients array are required' });
+  }
+
+  try {
+    const result = calculateEqualSplit(parseFloat(totalAmountXlm), recipients);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
 });

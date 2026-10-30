@@ -9,6 +9,7 @@ import { rateLimiter } from './middleware/rate-limit';
 import { requestLogger } from './middleware/logger';
 import { errorHandler } from './middleware/error';
 import { correlationMiddleware } from './middleware/correlation';
+import { securityHeaders } from './middleware/security';
 import { stellarRouter } from './routes/stellar';
 import { assetsRouter } from './routes/assets';
 import { webhooksRouter } from './routes/webhooks';
@@ -21,6 +22,7 @@ import { docsRouter } from './routes/docs';
 export const app = express();
 
 app.use(correlationMiddleware);
+app.use(securityHeaders);
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
