@@ -11,6 +11,12 @@ import { errorHandler } from './middleware/error';
 import { correlationMiddleware } from './middleware/correlation';
 import { stellarRouter } from './routes/stellar';
 import { assetsRouter } from './routes/assets';
+import { webhooksRouter } from './routes/webhooks';
+import { reportsRouter } from './routes/reports';
+import { analyticsRouter } from './routes/analytics';
+import { disputesRouter } from './routes/disputes';
+import { metricsRouter } from './routes/metrics';
+import { docsRouter } from './routes/docs';
 
 export const app = express();
 
@@ -30,6 +36,12 @@ app.use('/', paymentRequestsRouter);
 app.use('/', transactionsRouter);
 app.use('/', stellarRouter);
 app.use('/', assetsRouter);
+app.use('/', webhooksRouter);
+app.use('/', reportsRouter);
+app.use('/', analyticsRouter);
+app.use('/', disputesRouter);
+app.use('/', metricsRouter);
+app.use('/', docsRouter);
 
 // Global Error Handler
 app.use(errorHandler);
