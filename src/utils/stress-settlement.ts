@@ -2,7 +2,7 @@
  * Settlement Stress Test Engine (Up to 100 Simultaneous Allocations)
  * Verifies contract and backend zero-loss remainder distribution under extreme recipient counts.
  */
-import { calculateRemainderSafeSplit } from './math-split';
+import { calculateDeterministicSplit } from './math-split';
 
 export interface StressRecipient {
   address: string;
@@ -27,23 +27,22 @@ export function generateMaxRecipients(count: number = 100): StressRecipient[] {
 
 export function runSettlementStressAllocation(totalAmount: string, recipientCount: number = 100) {
   const recipients = generateMaxRecipients(recipientCount);
-  const shares = recipients.map(r => r.share);
   
   const startTime = Date.now();
-  const splitResult = calculateRemainderSafeSplit(totalAmount, shares);
+  const splitResult = calculateDeterministicSplit(totalAmount, recipientCount);
   const executionTimeMs = Date.now() - startTime;
 
   return {
     recipientCount,
     totalInput: totalAmount,
-    sumAllocated: splitResult.sumAllocated,
-    remainderStroops: splitResult.remainderStroops,
-    exactMatch: splitResult.totalStroops === splitResult.allocations.reduce((a, b) => a + b, 0n),
+    totalStroops: splitResult.totalStroops.toString(),
+    remainderStroops: splitResult.remainderStroops.toString(),
+    exactMatch: splitResult.proofValid,
     executionTimeMs,
     recipients: recipients.map((r, idx) => ({
       address: r.address,
       shareBps: r.share,
-      stroops: splitResult.allocations[idx].toString(),
+      stroops: splitResult.recipients[idx]?.stroops.toString() || '0',
     })),
   };
 }

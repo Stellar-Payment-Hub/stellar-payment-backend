@@ -17,7 +17,7 @@ export function generateBenchmarkMarkdownReport(): string {
 
   for (const [key, prof] of Object.entries(METHOD_GAS_PROFILES)) {
     const feeXlm = (prof.estimatedFeeStroops / 10_000_000).toFixed(7);
-    lines.push(`| `${prof.method}` | ${prof.cpuInstructions.toLocaleString()} | ${prof.memoryBytes.toLocaleString()} B | ${prof.readBytes.toLocaleString()} B | ${prof.writeBytes.toLocaleString()} B | ${prof.estimatedFeeStroops.toLocaleString()} | ${feeXlm} XLM |`);
+    lines.push(`| \`${prof.method}\` | ${prof.cpuInstructions.toLocaleString()} | ${prof.memoryBytes.toLocaleString()} B | ${prof.readBytes.toLocaleString()} B | ${prof.writeBytes.toLocaleString()} B | ${prof.estimatedFeeStroops.toLocaleString()} | ${feeXlm} XLM |`);
   }
 
   lines.push('');
