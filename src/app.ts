@@ -8,9 +8,13 @@ import { transactionsRouter } from './routes/transactions';
 import { rateLimiter } from './middleware/rate-limit';
 import { requestLogger } from './middleware/logger';
 import { errorHandler } from './middleware/error';
+import { correlationMiddleware } from './middleware/correlation';
+import { stellarRouter } from './routes/stellar';
+import { assetsRouter } from './routes/assets';
 
 export const app = express();
 
+app.use(correlationMiddleware);
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
@@ -24,6 +28,8 @@ app.use('/', paymentsRouter);
 app.use('/', settlementsRouter);
 app.use('/', paymentRequestsRouter);
 app.use('/', transactionsRouter);
+app.use('/', stellarRouter);
+app.use('/', assetsRouter);
 
 // Global Error Handler
 app.use(errorHandler);
