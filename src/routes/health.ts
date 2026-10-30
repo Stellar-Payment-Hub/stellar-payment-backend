@@ -22,3 +22,22 @@ healthRouter.get('/api/health/ledger', async (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+healthRouter.get('/api/health/diagnostics', async (_req, res) => {
+  const { paymentRepository } = await import('../database/repository');
+  const mem = process.memoryUsage();
+  return res.json({
+    status: 'healthy',
+    uptimeSeconds: Math.floor(process.uptime()),
+    memory: {
+      rssMb: (mem.rss / 1024 / 1024).toFixed(2),
+      heapUsedMb: (mem.heapUsed / 1024 / 1024).toFixed(2),
+    },
+    database: {
+      paymentsCount: paymentRepository.list().length,
+      settlementsCount: paymentRepository.listSettlements().length,
+      transactionsCount: paymentRepository.listTransactions().length,
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
