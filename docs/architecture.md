@@ -1,94 +1,41 @@
-# Architecture: Stellar Payment Backend & Event Synchronizer
+# System Architecture Specification
 
 ## Overview
-This repository provides the backend API gateway, idempotent Soroban blockchain event synchronizer, and real-time push streaming layer for the **Stellar Payment Hub**.
 
-The service provides:
-1. **Idempotent Blockchain Event Ingestion**: Prevents duplicate records across ledger reorgs or RPC retries by fingerprinting events with `{transaction_hash}-{ledger}-{topic}`.
-2. **Multi-Recipient Settlement Validation**: Validates batch disbursement calculations and tracks nested child payment statuses.
-3. **Invoicing & Payment Request Management**: Manages shareable payment requests, expiration schedules, and payment verification.
-4. **Real-Time Push Streaming**: Leverages Server-Sent Events (SSE) via `/api/payments/stream` to push state transitions instantly to connected frontend clients.
+The **Stellar Payment Hub** is an end-to-end decentralized financial infrastructure platform engineered on Stellar and Soroban. It bridges institutional payment requirements (atomic split disbursements, conditional escrows, dispute resolution) with sub-second settlement and sub-cent fees.
 
----
+## Architectural Layers
 
-## Architectural Topology
-
-```text
-                        dApp Clients (React / Wallets)
-                                     │
-                                     ▼
-                ┌────────────────────────────────────────┐
-                │          Express API Gateway           │
-                │   • Request Correlation Logger         │
-                │   • IP In-Memory Rate Limiter          │
-                └────────────────────┬───────────────────┘
-                                     │
-         ┌───────────────────────────┼───────────────────────────┐
-         ▼                           ▼                           ▼
-[ Payments Router ]       [ Settlements Router ]     [ Invoices & Transactions ]
-         │                           │                           │
-         └───────────────────────────┼───────────────────────────┘
-                                     │
-                                     ▼
-                ┌────────────────────────────────────────┐
-                │        Repository & Domain Layer       │
-                │  (PostgreSQL Model / In-Memory Store)  │
-                └────────────────────┬───────────────────┘
-                                     │
-                     ┌───────────────┴───────────────┐
-                     ▼                               ▼
-       ┌───────────────────────────┐   ┌───────────────────────────┐
-       │   Idempotency Engine      │   │   Server-Sent Events      │
-       │ Deduplication by Event ID │   │ Real-Time Broadcast Hub   │
-       └───────────────────────────┘   └───────────────────────────┘
+```
++-------------------------------------------------------------+
+|                      Client Layer                           |
+|  - React 18 Web App (Vite + Tailwind)                      |
+|  - Freighter Wallet & Dev Keypair Sandbox                   |
+|  - SEP-0007 QR Code & Deep-Link Consumer                   |
++-------------------------------------------------------------+
+                              |
+                              v (HTTPS / SSE / REST)
++-------------------------------------------------------------+
+|                      Orchestration Layer                    |
+|  - Express / TypeScript Backend                             |
+|  - SSE Event Broadcaster & Webhook Dispatcher               |
+|  - BigInt Zero-Loss Remainder Split Engine                  |
+|  - StrKey & XDR Verification Layer                          |
++-------------------------------------------------------------+
+                              |
+                              v (JSON-RPC 2.0 / Horizon REST)
++-------------------------------------------------------------+
+|                      Blockchain Layer                       |
+|  - Soroban Virtual Machine (Protocol 22)                    |
+|  - payment-registry Contract (Escrows, RBAC, Audits)        |
+|  - settlement-router Contract (Atomic 100-Way Splits)       |
+|  - Stellar Asset Contracts (Native XLM, USDC, EURC)         |
++-------------------------------------------------------------+
 ```
 
----
+## Core Principles
 
-## Directory Structure
-```text
-stellar-payment-backend/
-├── src/
-│   ├── config/
-│   │   └── env.ts               # Centralized environment variable loader
-│   ├── database/
-│   │   └── repository.ts        # Payment, settlement, and transaction models
-│   ├── events/
-│   │   └── processor.ts         # Idempotent event fingerprint processor
-│   ├── middleware/
-│   │   ├── error.ts             # Centralized error handler
-│   │   ├── logger.ts            # Correlation request logger
-│   │   └── rate-limit.ts        # IP token bucket rate limiter
-│   ├── realtime/
-│   │   └── sse.ts               # Server-Sent Events broadcast manager
-│   ├── routes/
-│   │   ├── health.ts            # GET /health probe
-│   │   ├── payment-requests.ts  # Invoices & payment request routes
-│   │   ├── payments.ts          # Core payments & SSE stream route
-│   │   ├── settlements.ts       # Multi-address batch settlements
-│   │   └── transactions.ts      # Indexed ledger transactions
-│   ├── app.ts                   # Express application assembly
-│   └── server.ts                # HTTP server bootstrap
-├── tests/
-│   ├── health.test.ts
-│   ├── payment-requests.test.ts
-│   ├── payments.test.ts
-│   ├── settlements.test.ts
-│   └── transactions.test.ts
-├── docs/
-│   └── architecture.md
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── .env.example
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
----
-
-## Error & Security Standards
-* **Rate Limiting**: Bounded at 100 requests per 15 minutes per IP address on public endpoints.
-* **Input Validation**: Strict address validation using StrKey Ed25519 checksums.
-* **Deterministic Accounting**: Financial amounts are validated to prevent negative values, self-payments, and split discrepancies.
+1. **Atomic Invariance**: All multi-recipient transfers either fully commit or fully revert on-chain.
+2. **Integer Stroop Accounting**: Never use floating-point mathematics for money; 1 XLM = 10,000,000 Stroops.
+3. **Reactive State Sync**: Clients receive instant push notifications via Server-Sent Events (SSE) upon transaction confirmation.
+4. **Defense in Depth**: Reentrancy guards, rate limiting, HMAC webhooks, and administrative multi-sig pausing.
