@@ -1,0 +1,38 @@
+name: Soroban WASM Size Check
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/**'
+      - 'src/**'
+      - 'Cargo.toml'
+
+jobs:
+  check-size:
+    name: Check Compiled WASM Footprint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Build Release WASM
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Verify WASM Size Under 64KB Budget
+        run: |
+          MAX_SIZE=65536
+          for f in target/wasm32-unknown-unknown/release/*.wasm; do
+            if [ -f "$f" ]; then
+              SIZE=$(wc -c < "$f")
+              echo "Contract: $f - Size: $SIZE bytes (Budget: $MAX_SIZE bytes)"
+              if [ "$SIZE" -gt "$MAX_SIZE" ]; then
+                echo "Error: WASM size exceeds budget limit!"
+                exit 1
+              fi
+            fi
+          done
