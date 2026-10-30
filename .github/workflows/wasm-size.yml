@@ -11,6 +11,7 @@ jobs:
   check-size:
     name: Check Compiled WASM Footprint
     runs-on: ubuntu-latest
+    if: hashFiles('**/Cargo.toml') != ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

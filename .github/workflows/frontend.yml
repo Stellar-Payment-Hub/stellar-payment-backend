@@ -10,6 +10,7 @@ jobs:
   frontend-ci:
     name: Test, Lint & Build Frontend
     runs-on: ubuntu-latest
+    if: hashFiles('src/App.tsx') != ''
     strategy:
       matrix:
         node-version: [18.x, 20.x]

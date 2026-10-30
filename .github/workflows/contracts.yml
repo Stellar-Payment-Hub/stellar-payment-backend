@@ -10,6 +10,7 @@ jobs:
   contracts-test:
     name: Build & Test Soroban Contracts
     runs-on: ubuntu-latest
+    if: hashFiles('**/Cargo.toml') != ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

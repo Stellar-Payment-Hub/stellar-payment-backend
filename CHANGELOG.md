@@ -1,8 +1,17 @@
 # Changelog
 
-All notable changes to the Stellar Payment Hub will be documented in this file.
+All notable changes to the Stellar Payment Hub Backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.2.0] - 2026-10-30
+
+### Added
+- Integrated `@vitest/coverage-v8` test coverage engine with automated summary reporting.
+- Conditional execution guards across CI/CD workflows preventing inapplicable steps.
+- Expanded backend test suite to 41 test suites and 99 unit/integration tests with 100% pass rate.
+- Health diagnostics endpoint `/api/health/diagnostics` exposing real-time SSE subscriber metrics and memory footprints.
+- End-to-end user journey simulation tests verifying the complete Invoice -> Payment -> Multi-Split lifecycle.
 
 ## [1.0.0] - 2026-10-30
 
