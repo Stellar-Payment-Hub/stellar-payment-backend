@@ -38,3 +38,32 @@ stellarRouter.get('/api/stellar/fees', async (_req: Request, res: Response) => {
   const stats = await feeEstimator.getFeeStats();
   return res.json(stats);
 });
+
+// Transaction submission endpoint with Horizon error decoding
+stellarRouter.post('/api/stellar/submit', async (req: Request, res: Response) => {
+  const { signedEnvelopeXdr } = req.body;
+  if (!signedEnvelopeXdr || typeof signedEnvelopeXdr !== 'string') {
+    return res.status(400).json({ error: 'signedEnvelopeXdr is required' });
+  }
+
+  try {
+    const horizon = stellarClient.getHorizon();
+    const result = await horizon.submitTransaction(signedEnvelopeXdr as any);
+    return res.json({
+      status: 'success',
+      hash: result.hash,
+      ledger: result.ledger,
+      envelopeXdr: result.envelope_xdr,
+      resultXdr: result.result_xdr,
+    });
+  } catch (err: any) {
+    const resultXdr = err?.response?.data?.extras?.result_xdr;
+    const resultCodes = err?.response?.data?.extras?.result_codes;
+    return res.status(400).json({
+      status: 'failed',
+      message: err.message || 'Transaction submission failed',
+      resultCodes: resultCodes || null,
+      resultXdr: resultXdr || null,
+    });
+  }
+});
