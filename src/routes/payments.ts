@@ -7,6 +7,21 @@ import { PaymentStatus } from '../database/schema';
 export const paymentsRouter = Router();
 
 // GET /api/payments - List payments with optional filters
+paymentsRouter.get('/api/payments/search', (req: Request, res: Response) => {
+  const { q, status, creator, recipient, limit, offset, sortBy, sortOrder } = req.query;
+  const result = (paymentRepository as any).queryPayments({
+    search: typeof q === 'string' ? q : undefined,
+    status: typeof status === 'string' ? status : undefined,
+    creator: typeof creator === 'string' ? creator : undefined,
+    recipient: typeof recipient === 'string' ? recipient : undefined,
+    limit: limit ? parseInt(limit as string, 10) : undefined,
+    offset: offset ? parseInt(offset as string, 10) : undefined,
+    sortBy: sortBy as any,
+    sortOrder: sortOrder as any,
+  });
+  return res.json(result);
+});
+
 paymentsRouter.get('/api/payments', (req: Request, res: Response) => {
   const { status, creator, recipient } = req.query;
 
