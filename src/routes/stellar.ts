@@ -1,3 +1,4 @@
+import { generateSvgQrPlaceholder } from '../utils/qr-generator';
 import { Router, Request, Response } from 'express';
 import { stellarClient } from '../services/stellar-client';
 import { feeEstimator } from '../services/fee-estimator';
@@ -84,4 +85,16 @@ stellarRouter.post('/api/stellar/sep0007-uri', (req: Request, res: Response) => 
     amount,
     memo: memo || null,
   });
+});
+
+// QR code payload endpoint
+stellarRouter.get('/api/stellar/qrcode', (req: Request, res: Response) => {
+  const { data } = req.query;
+  if (!data || typeof data !== 'string') {
+    return res.status(400).json({ error: 'data query parameter is required' });
+  }
+
+  const svg = generateSvgQrPlaceholder(data);
+  res.setHeader('Content-Type', 'image/svg+xml');
+  return res.send(svg);
 });
