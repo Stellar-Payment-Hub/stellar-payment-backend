@@ -194,7 +194,9 @@ paymentsRouter.post('/api/events/process', (req: Request, res: Response) => {
 // GET /api/payments/stream - Server-Sent Events (SSE) real-time stream
 paymentsRouter.get('/api/payments/stream', (req: Request, res: Response) => {
   const clientId = `client-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-  paymentStream.addClient(clientId, res);
+  const accountFilter = req.query.account as string | undefined;
+  const lastEventId = (req.headers['last-event-id'] || req.query.lastEventId) as string | undefined;
+  paymentStream.addClient(clientId, res, accountFilter, lastEventId);
 
   req.on('close', () => {
     paymentStream.removeClient(clientId);
