@@ -449,3 +449,34 @@ declare module './repository' {
 
   return { data: sliced, total, limit, offset };
 };
+
+export interface CursorPaginationOptions {
+  cursor?: string;
+  limit?: number;
+}
+
+export interface CursorPaginatedResult<T> {
+  data: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+(PaymentRepository.prototype as any).paginateWithCursor = function (options: CursorPaginationOptions): CursorPaginatedResult<Payment> {
+  const all = Array.from((this as any).payments.values()) as Payment[];
+  all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  let startIndex = 0;
+  if (options.cursor) {
+    const idx = all.findIndex((p) => p.id === options.cursor);
+    if (idx !== -1) {
+      startIndex = idx + 1;
+    }
+  }
+
+  const limit = Math.min(options.limit || 10, 50);
+  const data = all.slice(startIndex, startIndex + limit);
+  const hasMore = startIndex + limit < all.length;
+  const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].id : null;
+
+  return { data, nextCursor, hasMore };
+};
