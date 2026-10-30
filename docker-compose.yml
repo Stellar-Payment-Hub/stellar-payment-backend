@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  stellar-payment-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stellar-payment-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:80
+      - STELLAR_NETWORK=testnet
+      - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+      - SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - stellar-hub-network
+
+  stellar-payment-frontend:
+    build:
+      context: ../stellar-payment-frontend
+      dockerfile: Dockerfile
+    container_name: stellar-payment-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      stellar-payment-backend:
+        condition: service_healthy
+    networks:
+      - stellar-hub-network
+
+networks:
+  stellar-hub-network:
+    driver: bridge
