@@ -67,3 +67,21 @@ stellarRouter.post('/api/stellar/submit', async (req: Request, res: Response) =>
     });
   }
 });
+
+// SEP-0007 URI Generator
+stellarRouter.post('/api/stellar/sep0007-uri', (req: Request, res: Response) => {
+  const { destination, amount, memo } = req.body;
+  if (!destination || !amount) {
+    return res.status(400).json({ error: 'destination and amount are required' });
+  }
+
+  const encodedMemo = memo ? `&memo=${encodeURIComponent(memo)}&memo_type=MEMO_TEXT` : '';
+  const uri = `web+stellar:pay?destination=${destination}&amount=${amount}${encodedMemo}`;
+
+  return res.json({
+    uri,
+    destination,
+    amount,
+    memo: memo || null,
+  });
+});
