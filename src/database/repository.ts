@@ -496,3 +496,15 @@ export interface CursorPaginatedResult<T> {
 (PaymentRepository.prototype as any).getTransactions = function (): any[] {
   return (this as any).listTransactions();
 };
+
+(PaymentRepository.prototype as any).pruneOldHistory = function (maxItems = 1000): number {
+  let pruned = 0;
+  if ((this as any).payments.size > maxItems) {
+    const keysToDelete = Array.from((this as any).payments.keys()).slice(0, (this as any).payments.size - maxItems);
+    for (const key of keysToDelete) {
+      (this as any).payments.delete(key);
+      pruned++;
+    }
+  }
+  return pruned;
+};
