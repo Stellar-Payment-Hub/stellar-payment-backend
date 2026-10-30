@@ -1,0 +1,56 @@
+{
+  "info": {
+    "name": "Stellar Payment Hub API",
+    "description": "Production API Collection for Stellar Payment Hub REST Endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Probe",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Diagnostics Telemetry",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health/diagnostics"
+      }
+    },
+    {
+      "name": "Create Payment",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/payments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"creator_address\": \"GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5\",\n  \"recipient_address\": \"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN\",\n  \"amount\": \"50.0000000\",\n  \"memo\": \"API Collection Test\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Calculate Split",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/settlements/calculate-split",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"total_amount\": \"100.0000000\",\n  \"recipients_count\": 3\n}"
+        }
+      }
+    },
+    {
+      "name": "Simulate Soroban Gas",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/stellar/simulate",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transactionXdr\": \"AAAAAgAAAAA=\"\n}"
+        }
+      }
+    }
+  ]
+}
