@@ -3,12 +3,14 @@ import { Response } from 'express';
 interface SSEClient {
   id: string;
   res: Response;
+  accountFilter?: string;
+  lastEventId?: string;
 }
 
 class PaymentStreamManager {
   private clients: Map<string, SSEClient> = new Map();
 
-  public addClient(id: string, res: Response): void {
+  public addClient(id: string, res: Response, accountFilter?: string, lastEventId?: string): void {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -18,7 +20,7 @@ class PaymentStreamManager {
 
     res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
 
-    this.clients.set(id, { id, res });
+    this.clients.set(id, { id, res, accountFilter, lastEventId });
   }
 
   public removeClient(id: string): void {
