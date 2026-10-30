@@ -480,3 +480,19 @@ export interface CursorPaginatedResult<T> {
 
   return { data, nextCursor, hasMore };
 };
+
+(PaymentRepository.prototype as any).cleanupExpiredRequests = function (): number {
+  const now = new Date();
+  let count = 0;
+  for (const [id, req] of (this as any).paymentRequests.entries()) {
+    if (req.status === 'ACTIVE' && new Date(req.expires_at) <= now) {
+      req.status = 'EXPIRED';
+      count++;
+    }
+  }
+  return count;
+};
+
+(PaymentRepository.prototype as any).getTransactions = function (): any[] {
+  return (this as any).listTransactions();
+};
