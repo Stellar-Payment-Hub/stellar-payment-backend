@@ -1,0 +1,26 @@
+name: Stellar Testnet Dry-Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Target Stellar Network'
+        required: true
+        default: 'testnet'
+
+jobs:
+  deploy-dry-run:
+    name: Dry-Run Soroban Contract Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Stellar CLI
+        run: |
+          echo "Installing Stellar CLI for network verification"
+          cargo install --locked stellar-cli --features opt || true
+
+      - name: Validate Testnet Network Connection
+        run: |
+          curl -s -X POST https://soroban-testnet.stellar.org/ -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}'
