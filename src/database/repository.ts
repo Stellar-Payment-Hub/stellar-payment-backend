@@ -382,3 +382,70 @@ class PaymentRepository {
 }
 
 export const paymentRepository = new PaymentRepository();
+
+export interface QueryOptions {
+  search?: string;
+  status?: string;
+  creator?: string;
+  recipient?: string;
+  sortBy?: 'created_at' | 'amount' | 'id';
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+declare module './repository' {
+  interface PaymentRepository {
+    queryPayments(options: QueryOptions): PaginatedResult<Payment>;
+  }
+}
+
+(PaymentRepository.prototype as any).queryPayments = function (options: QueryOptions): PaginatedResult<Payment> {
+  let list = Array.from((this as any).payments.values()) as Payment[];
+
+  if (options.status) {
+    list = list.filter((p) => p.status === options.status);
+  }
+  if (options.creator) {
+    list = list.filter((p) => p.creator_address.toLowerCase() === options.creator!.toLowerCase());
+  }
+  if (options.recipient) {
+    list = list.filter((p) => p.recipient_address.toLowerCase() === options.recipient!.toLowerCase());
+  }
+  if (options.search) {
+    const s = options.search.toLowerCase();
+    list = list.filter(
+      (p) =>
+        p.id.toLowerCase().includes(s) ||
+        p.memo.toLowerCase().includes(s) ||
+        p.creator_address.toLowerCase().includes(s) ||
+        p.recipient_address.toLowerCase().includes(s)
+    );
+  }
+
+  const sortBy = options.sortBy || 'created_at';
+  const order = options.sortOrder === 'asc' ? 1 : -1;
+  list.sort((a, b) => {
+    if (sortBy === 'amount') {
+      return (parseFloat(a.amount) - parseFloat(b.amount)) * order;
+    }
+    if (sortBy === 'id') {
+      return a.id.localeCompare(b.id) * order;
+    }
+    return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * order;
+  });
+
+  const total = list.length;
+  const limit = options.limit || 20;
+  const offset = options.offset || 0;
+  const sliced = list.slice(offset, offset + limit);
+
+  return { data: sliced, total, limit, offset };
+};
