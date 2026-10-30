@@ -45,3 +45,9 @@ class PaymentStreamManager {
 }
 
 export const paymentStream = new PaymentStreamManager();
+
+export function startSseHeartbeat(intervalMs = 15000): NodeJS.Timeout {
+  return setInterval(() => {
+    paymentStream.broadcast('ping', { timestamp: new Date().toISOString() });
+  }, intervalMs);
+}
