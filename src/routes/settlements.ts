@@ -96,6 +96,18 @@ settlementsRouter.post('/api/settlements/:id/execute', (req: Request, res: Respo
   const id = req.params.id;
   const { sub_payment_ids } = req.body;
 
+  if (process.env.NODE_ENV === 'production') {
+    const authHeader = req.headers.authorization;
+    const adminToken = process.env.ADMIN_API_TOKEN;
+    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Unauthorized: Authentication required to execute settlements.',
+      });
+      return;
+    }
+  }
+
   const settlement = paymentRepository.executeSettlement(id, sub_payment_ids || []);
 
   if (!settlement) {
@@ -117,6 +129,19 @@ settlementsRouter.post('/api/settlements/:id/execute', (req: Request, res: Respo
 // POST /api/settlements/:id/cancel - Cancel settlement
 settlementsRouter.post('/api/settlements/:id/cancel', (req: Request, res: Response) => {
   const id = req.params.id;
+
+  if (process.env.NODE_ENV === 'production') {
+    const authHeader = req.headers.authorization;
+    const adminToken = process.env.ADMIN_API_TOKEN;
+    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Unauthorized: Authentication required to cancel settlements.',
+      });
+      return;
+    }
+  }
+
   const settlement = paymentRepository.cancelSettlement(id);
 
   if (!settlement) {

@@ -315,6 +315,20 @@ class PaymentRepository {
     return this.paymentRequests.get(id);
   }
 
+  public listPaymentRequests(filters?: {
+    requester?: string;
+    status?: string;
+  }): PaymentRequest[] {
+    let list = Array.from(this.paymentRequests.values());
+    if (filters?.requester) {
+      list = list.filter((r) => r.requester.toLowerCase() === filters.requester!.toLowerCase());
+    }
+    if (filters?.status) {
+      list = list.filter((r) => r.status === filters.status);
+    }
+    return list.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  }
+
   public markPaymentRequestPaid(
     id: string,
     paidBy: string,
@@ -335,6 +349,10 @@ class PaymentRepository {
     return Array.from(this.transactions.values()).sort((a, b) =>
       a.created_at < b.created_at ? 1 : -1
     );
+  }
+
+  public findTransactionByHash(hash: string): TransactionRecord | undefined {
+    return this.transactions.get(hash);
   }
 
   public addTransaction(data: Omit<TransactionRecord, 'id' | 'created_at'>): TransactionRecord {

@@ -4,6 +4,21 @@ import { paymentStream } from '../realtime/payment-stream';
 
 export const paymentRequestsRouter = Router();
 
+// GET /api/payment-requests - List active/all payment requests
+paymentRequestsRouter.get('/api/payment-requests', (req: Request, res: Response) => {
+  const { requester, status } = req.query;
+  const requests = paymentRepository.listPaymentRequests({
+    requester: typeof requester === 'string' ? requester : undefined,
+    status: typeof status === 'string' ? status : undefined,
+  });
+
+  res.status(200).json({
+    status: 'ok',
+    count: requests.length,
+    requests,
+  });
+});
+
 // POST /api/payment-requests - Create a shareable payment request
 paymentRequestsRouter.post('/api/payment-requests', (req: Request, res: Response) => {
   const { requester, amount, memo, expiresInHours } = req.body;
