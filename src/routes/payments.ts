@@ -193,6 +193,18 @@ paymentsRouter.get('/api/payments/:id/events', (req: Request, res: Response) => 
 
 // POST /api/events/process - Ingest contract event with idempotency
 paymentsRouter.post('/api/events/process', (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    const authHeader = req.headers.authorization;
+    const adminToken = process.env.ADMIN_API_TOKEN;
+    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Unauthorized: Authentication required to ingest contract events.',
+      });
+      return;
+    }
+  }
+
   const input: IngestEventInput = req.body;
 
   if (!input.event_type || !input.transaction_hash) {

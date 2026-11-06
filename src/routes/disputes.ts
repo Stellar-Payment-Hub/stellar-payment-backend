@@ -53,3 +53,27 @@ disputesRouter.post('/api/disputes', (req: Request, res: Response) => {
   disputesStore.set(id, dispute);
   return res.status(201).json(dispute);
 });
+
+// Resolve dispute (Arbitrator / Admin action)
+disputesRouter.patch('/api/disputes/:id/resolve', (req: Request, res: Response) => {
+  const { resolution } = req.body;
+  const dispute = disputesStore.get(req.params.id);
+
+  if (!dispute) {
+    return res.status(404).json({ error: `Dispute '${req.params.id}' not found` });
+  }
+
+  const validResolutions = ['RESOLVED_REFUND', 'RESOLVED_RELEASE'];
+  if (!resolution || !validResolutions.includes(resolution)) {
+    return res.status(400).json({
+      error: `Invalid resolution. Must be one of: ${validResolutions.join(', ')}`,
+    });
+  }
+
+  dispute.status = resolution as any;
+  dispute.resolvedAt = new Date().toISOString();
+  disputesStore.set(req.params.id, dispute);
+
+  return res.json({ status: 'ok', dispute });
+});
+
