@@ -2,6 +2,7 @@ import { calculateEqualSplit } from '../services/split-calculator';
 import { Router, Request, Response } from 'express';
 import { paymentRepository } from '../database/repository';
 import { paymentStream } from '../realtime/payment-stream';
+import { verifyAdminAuth } from '../middleware/auth';
 import { SettlementStatus } from '../database/schema';
 
 export const settlementsRouter = Router();
@@ -96,16 +97,12 @@ settlementsRouter.post('/api/settlements/:id/execute', (req: Request, res: Respo
   const id = req.params.id;
   const { sub_payment_ids } = req.body;
 
-  if (process.env.NODE_ENV === 'production') {
-    const authHeader = req.headers.authorization;
-    const adminToken = process.env.ADMIN_API_TOKEN;
-    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
-      res.status(401).json({
-        status: 'error',
-        message: 'Unauthorized: Authentication required to execute settlements.',
-      });
-      return;
-    }
+  if (process.env.NODE_ENV === 'production' && !verifyAdminAuth(req)) {
+    res.status(401).json({
+      status: 'error',
+      message: 'Unauthorized: Authentication required to execute settlements.',
+    });
+    return;
   }
 
   const settlement = paymentRepository.executeSettlement(id, sub_payment_ids || []);
@@ -130,16 +127,12 @@ settlementsRouter.post('/api/settlements/:id/execute', (req: Request, res: Respo
 settlementsRouter.post('/api/settlements/:id/cancel', (req: Request, res: Response) => {
   const id = req.params.id;
 
-  if (process.env.NODE_ENV === 'production') {
-    const authHeader = req.headers.authorization;
-    const adminToken = process.env.ADMIN_API_TOKEN;
-    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
-      res.status(401).json({
-        status: 'error',
-        message: 'Unauthorized: Authentication required to cancel settlements.',
-      });
-      return;
-    }
+  if (process.env.NODE_ENV === 'production' && !verifyAdminAuth(req)) {
+    res.status(401).json({
+      status: 'error',
+      message: 'Unauthorized: Authentication required to cancel settlements.',
+    });
+    return;
   }
 
   const settlement = paymentRepository.cancelSettlement(id);

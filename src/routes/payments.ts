@@ -3,6 +3,7 @@ import { paymentRepository } from '../database/repository';
 import { paymentStream } from '../realtime/payment-stream';
 import { processContractEvent, IngestEventInput } from '../events/processor';
 import { PaymentStatus } from '../database/schema';
+import { verifyAdminAuth } from '../middleware/auth';
 
 export const paymentsRouter = Router();
 
@@ -132,16 +133,12 @@ paymentsRouter.patch('/api/payments/:id/status', (req: Request, res: Response) =
   const { status } = req.body;
 
   // In production, require administrative or webhook bearer token to mutate payment states
-  if (process.env.NODE_ENV === 'production') {
-    const authHeader = req.headers.authorization;
-    const adminToken = process.env.ADMIN_API_TOKEN;
-    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
-      res.status(401).json({
-        status: 'error',
-        message: 'Unauthorized: Authentication required to mutate payment lifecycle status.',
-      });
-      return;
-    }
+  if (process.env.NODE_ENV === 'production' && !verifyAdminAuth(req)) {
+    res.status(401).json({
+      status: 'error',
+      message: 'Unauthorized: Authentication required to mutate payment lifecycle status.',
+    });
+    return;
   }
 
   const validStatuses: PaymentStatus[] = [
@@ -193,16 +190,12 @@ paymentsRouter.get('/api/payments/:id/events', (req: Request, res: Response) => 
 
 // POST /api/events/process - Ingest contract event with idempotency
 paymentsRouter.post('/api/events/process', (req: Request, res: Response) => {
-  if (process.env.NODE_ENV === 'production') {
-    const authHeader = req.headers.authorization;
-    const adminToken = process.env.ADMIN_API_TOKEN;
-    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
-      res.status(401).json({
-        status: 'error',
-        message: 'Unauthorized: Authentication required to ingest contract events.',
-      });
-      return;
-    }
+  if (process.env.NODE_ENV === 'production' && !verifyAdminAuth(req)) {
+    res.status(401).json({
+      status: 'error',
+      message: 'Unauthorized: Authentication required to ingest contract events.',
+    });
+    return;
   }
 
   const input: IngestEventInput = req.body;

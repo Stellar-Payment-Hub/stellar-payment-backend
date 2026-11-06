@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { verifyAdminAuth } from '../middleware/auth';
 
 export interface OffChainDisputeRecord {
   id: string;
@@ -56,6 +57,12 @@ disputesRouter.post('/api/disputes', (req: Request, res: Response) => {
 
 // Resolve dispute (Arbitrator / Admin action)
 disputesRouter.patch('/api/disputes/:id/resolve', (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' && !verifyAdminAuth(req)) {
+    return res.status(401).json({
+      error: 'Unauthorized: Administrative or arbitrator credentials required in production',
+    });
+  }
+
   const { resolution } = req.body;
   const dispute = disputesStore.get(req.params.id);
 
