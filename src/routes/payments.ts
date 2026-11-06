@@ -81,11 +81,34 @@ paymentsRouter.post('/api/payments', (req: Request, res: Response) => {
     return;
   }
 
+  const parsedAmount = parseFloat(amount);
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    res.status(400).json({
+      status: 'error',
+      message: 'amount must be a valid positive number.',
+    });
+    return;
+  }
+
+  // Basic Stellar address format check (standard 56-character Ed25519 public key)
+  if (
+    typeof creator_address !== 'string' ||
+    typeof recipient_address !== 'string' ||
+    creator_address.length < 50 ||
+    recipient_address.length < 50
+  ) {
+    res.status(400).json({
+      status: 'error',
+      message: 'creator_address and recipient_address must be valid Stellar public keys.',
+    });
+    return;
+  }
+
   const payment = paymentRepository.create({
     creator_address,
     recipient_address,
-    amount,
-    memo: memo || '',
+    amount: parsedAmount.toFixed(7),
+    memo: typeof memo === 'string' ? memo.substring(0, 256) : '',
     status: 'PENDING',
     contract_address:
       contract_address || 'CD5D7OITCBFJJDHQVEZ6Y7MYIZSWEVOCQO4ES7WZEWW3S37IGUVZAI7S',
@@ -103,10 +126,23 @@ paymentsRouter.post('/api/payments', (req: Request, res: Response) => {
   });
 });
 
-// PATCH /api/payments/:id/status - Update payment status
+// PATCH /api/payments/:id/status - Update payment status with transition validation
 paymentsRouter.patch('/api/payments/:id/status', (req: Request, res: Response) => {
   const id = req.params.id;
   const { status } = req.body;
+
+  // In production, require administrative or webhook bearer token to mutate payment states
+  if (process.env.NODE_ENV === 'production') {
+    const authHeader = req.headers.authorization;
+    const adminToken = process.env.ADMIN_API_TOKEN;
+    if (!authHeader || !adminToken || authHeader !== `Bearer ${adminToken}`) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Unauthorized: Authentication required to mutate payment lifecycle status.',
+      });
+      return;
+    }
+  }
 
   const validStatuses: PaymentStatus[] = [
     'PENDING',

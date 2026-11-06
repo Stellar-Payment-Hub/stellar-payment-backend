@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { corsOptions } from './config/cors';
 import { healthRouter } from './routes/health';
 import { paymentsRouter } from './routes/payments';
 import { settlementsRouter } from './routes/settlements';
@@ -21,10 +22,11 @@ import { docsRouter } from './routes/docs';
 
 export const app = express();
 
+app.set('trust proxy', 1);
 app.use(correlationMiddleware);
 app.use(securityHeaders);
-app.use(cors());
-app.use(express.json());
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 app.use(rateLimiter);
 

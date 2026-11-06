@@ -1,6 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
+import { timingSafeEqual } from 'crypto';
 
 const ADMIN_SECRET_TOKEN = process.env.ADMIN_API_TOKEN || 'sph_admin_secret_testnet_token';
+
+/**
+ * Perform a constant-time string comparison to prevent timing attack vulnerabilities.
+ */
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
 
 export function requireAdminAuth(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
@@ -9,11 +22,12 @@ export function requireAdminAuth(req: Request, res: Response, next: NextFunction
     return;
   }
 
-  const token = authHeader.substring(7);
-  if (token !== ADMIN_SECRET_TOKEN) {
+  const token = authHeader.substring(7).trim();
+  if (!safeCompare(token, ADMIN_SECRET_TOKEN)) {
     res.status(403).json({ error: 'Forbidden: Insufficient administrative privileges' });
     return;
   }
 
   next();
 }
+

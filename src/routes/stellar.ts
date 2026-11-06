@@ -22,12 +22,20 @@ stellarRouter.post('/api/stellar/simulate', async (req: Request, res: Response) 
       simulatedAt: new Date().toISOString(),
     });
   } catch (err: any) {
-    // If mock or offline, provide synthetic simulation response
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(502).json({
+        status: 'simulation_failed',
+        error: err.message || 'Soroban RPC transaction simulation failed',
+        simulatedAt: new Date().toISOString(),
+      });
+    }
+    // Testnet / offline development fallback with warning flag
     return res.json({
       status: 'simulated',
       cpuInstructions: '152400',
       memoryBytes: '42500',
       minResourceFee: '1000',
+      simulatedOffline: true,
       error: null,
       simulatedAt: new Date().toISOString(),
     });

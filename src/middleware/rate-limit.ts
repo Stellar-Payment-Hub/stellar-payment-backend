@@ -7,11 +7,27 @@ interface ClientBucket {
 
 const windowMs = 60 * 1000; // 1 minute
 const maxRequests = 200;
+const MAX_TRACKED_CLIENTS = 10000;
 const clients = new Map<string, ClientBucket>();
+
+// Periodic cleanup to prevent unbounded memory growth
+function pruneExpiredBuckets(): void {
+  const now = Date.now();
+  for (const [ip, bucket] of clients.entries()) {
+    if (bucket.resetTime <= now) {
+      clients.delete(ip);
+    }
+  }
+}
 
 export function rateLimiter(req: Request, res: Response, next: NextFunction): void {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
+
+  // If map is growing too large, aggressively prune expired entries
+  if (clients.size > MAX_TRACKED_CLIENTS) {
+    pruneExpiredBuckets();
+  }
 
   let bucket = clients.get(ip);
   if (!bucket || bucket.resetTime <= now) {
@@ -39,3 +55,4 @@ export function rateLimiter(req: Request, res: Response, next: NextFunction): vo
 
   next();
 }
+

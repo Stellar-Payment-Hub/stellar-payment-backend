@@ -379,6 +379,98 @@ class PaymentRepository {
   public listEvents(targetId: string): PaymentEvent[] {
     return this.events.get(targetId) || [];
   }
+
+  // --- Advanced Query & Pagination Methods ---
+  public queryPayments(options: QueryOptions): PaginatedResult<Payment> {
+    let list = Array.from(this.payments.values());
+
+    if (options.status) {
+      list = list.filter((p) => p.status === options.status);
+    }
+    if (options.creator) {
+      list = list.filter((p) => p.creator_address.toLowerCase() === options.creator!.toLowerCase());
+    }
+    if (options.recipient) {
+      list = list.filter((p) => p.recipient_address.toLowerCase() === options.recipient!.toLowerCase());
+    }
+    if (options.search) {
+      const s = options.search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.id.toLowerCase().includes(s) ||
+          p.memo.toLowerCase().includes(s) ||
+          p.creator_address.toLowerCase().includes(s) ||
+          p.recipient_address.toLowerCase().includes(s)
+      );
+    }
+
+    const sortBy = options.sortBy || 'created_at';
+    const order = options.sortOrder === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      if (sortBy === 'amount') {
+        return (parseFloat(a.amount) - parseFloat(b.amount)) * order;
+      }
+      if (sortBy === 'id') {
+        return a.id.localeCompare(b.id) * order;
+      }
+      return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * order;
+    });
+
+    const total = list.length;
+    const limit = options.limit || 20;
+    const offset = options.offset || 0;
+    const sliced = list.slice(offset, offset + limit);
+
+    return { data: sliced, total, limit, offset };
+  }
+
+  public paginateWithCursor(options: CursorPaginationOptions): CursorPaginatedResult<Payment> {
+    const all = Array.from(this.payments.values());
+    all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    let startIndex = 0;
+    if (options.cursor) {
+      const idx = all.findIndex((p) => p.id === options.cursor);
+      if (idx !== -1) {
+        startIndex = idx + 1;
+      }
+    }
+
+    const limit = Math.min(options.limit || 10, 50);
+    const data = all.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < all.length;
+    const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].id : null;
+
+    return { data, nextCursor, hasMore };
+  }
+
+  public cleanupExpiredRequests(): number {
+    const now = new Date();
+    let count = 0;
+    for (const [, req] of this.paymentRequests.entries()) {
+      if (req.status === 'ACTIVE' && new Date(req.expires_at) <= now) {
+        req.status = 'EXPIRED';
+        count++;
+      }
+    }
+    return count;
+  }
+
+  public getTransactions(): TransactionRecord[] {
+    return this.listTransactions();
+  }
+
+  public pruneOldHistory(maxItems = 1000): number {
+    let pruned = 0;
+    if (this.payments.size > maxItems) {
+      const keysToDelete = Array.from(this.payments.keys()).slice(0, this.payments.size - maxItems);
+      for (const key of keysToDelete) {
+        this.payments.delete(key);
+        pruned++;
+      }
+    }
+    return pruned;
+  }
 }
 
 export const paymentRepository = new PaymentRepository();
@@ -401,55 +493,6 @@ export interface PaginatedResult<T> {
   offset: number;
 }
 
-declare module './repository' {
-  interface PaymentRepository {
-    queryPayments(options: QueryOptions): PaginatedResult<Payment>;
-  }
-}
-
-(PaymentRepository.prototype as any).queryPayments = function (options: QueryOptions): PaginatedResult<Payment> {
-  let list = Array.from((this as any).payments.values()) as Payment[];
-
-  if (options.status) {
-    list = list.filter((p) => p.status === options.status);
-  }
-  if (options.creator) {
-    list = list.filter((p) => p.creator_address.toLowerCase() === options.creator!.toLowerCase());
-  }
-  if (options.recipient) {
-    list = list.filter((p) => p.recipient_address.toLowerCase() === options.recipient!.toLowerCase());
-  }
-  if (options.search) {
-    const s = options.search.toLowerCase();
-    list = list.filter(
-      (p) =>
-        p.id.toLowerCase().includes(s) ||
-        p.memo.toLowerCase().includes(s) ||
-        p.creator_address.toLowerCase().includes(s) ||
-        p.recipient_address.toLowerCase().includes(s)
-    );
-  }
-
-  const sortBy = options.sortBy || 'created_at';
-  const order = options.sortOrder === 'asc' ? 1 : -1;
-  list.sort((a, b) => {
-    if (sortBy === 'amount') {
-      return (parseFloat(a.amount) - parseFloat(b.amount)) * order;
-    }
-    if (sortBy === 'id') {
-      return a.id.localeCompare(b.id) * order;
-    }
-    return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * order;
-  });
-
-  const total = list.length;
-  const limit = options.limit || 20;
-  const offset = options.offset || 0;
-  const sliced = list.slice(offset, offset + limit);
-
-  return { data: sliced, total, limit, offset };
-};
-
 export interface CursorPaginationOptions {
   cursor?: string;
   limit?: number;
@@ -461,50 +504,3 @@ export interface CursorPaginatedResult<T> {
   hasMore: boolean;
 }
 
-(PaymentRepository.prototype as any).paginateWithCursor = function (options: CursorPaginationOptions): CursorPaginatedResult<Payment> {
-  const all = Array.from((this as any).payments.values()) as Payment[];
-  all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-  let startIndex = 0;
-  if (options.cursor) {
-    const idx = all.findIndex((p) => p.id === options.cursor);
-    if (idx !== -1) {
-      startIndex = idx + 1;
-    }
-  }
-
-  const limit = Math.min(options.limit || 10, 50);
-  const data = all.slice(startIndex, startIndex + limit);
-  const hasMore = startIndex + limit < all.length;
-  const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].id : null;
-
-  return { data, nextCursor, hasMore };
-};
-
-(PaymentRepository.prototype as any).cleanupExpiredRequests = function (): number {
-  const now = new Date();
-  let count = 0;
-  for (const [id, req] of (this as any).paymentRequests.entries()) {
-    if (req.status === 'ACTIVE' && new Date(req.expires_at) <= now) {
-      req.status = 'EXPIRED';
-      count++;
-    }
-  }
-  return count;
-};
-
-(PaymentRepository.prototype as any).getTransactions = function (): any[] {
-  return (this as any).listTransactions();
-};
-
-(PaymentRepository.prototype as any).pruneOldHistory = function (maxItems = 1000): number {
-  let pruned = 0;
-  if ((this as any).payments.size > maxItems) {
-    const keysToDelete = Array.from((this as any).payments.keys()).slice(0, (this as any).payments.size - maxItems);
-    for (const key of keysToDelete) {
-      (this as any).payments.delete(key);
-      pruned++;
-    }
-  }
-  return pruned;
-};
