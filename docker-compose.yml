@@ -12,7 +12,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - CORS_ORIGIN=http://localhost:5173,http://localhost:80,https://stellar-payment-frontend.vercel.app
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:80
       - STELLAR_NETWORK=testnet
       - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
       - SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
@@ -21,6 +21,20 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+    networks:
+      - stellar-hub-network
+
+  stellar-payment-frontend:
+    build:
+      context: ../stellar-payment-frontend
+      dockerfile: Dockerfile
+    container_name: stellar-payment-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      stellar-payment-backend:
+        condition: service_healthy
     networks:
       - stellar-hub-network
 
