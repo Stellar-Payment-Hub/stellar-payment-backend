@@ -4,8 +4,37 @@ import { paymentStream } from '../realtime/payment-stream';
 import { processContractEvent, IngestEventInput } from '../events/processor';
 import { PaymentStatus } from '../database/schema';
 import { verifyAdminAuth } from '../middleware/auth';
+import {
+  generatePaymentReceipt,
+  verifyPaymentReceipt,
+  getReceiptSigningKeypair,
+  PaymentNotFinalizedError,
+  ReceiptMasterKeyMissingError,
+  SignedPaymentReceipt,
+} from '../services/receipt-service';
 
 export const paymentsRouter = Router();
+
+// GET /api/payments/receipt-public-key - Retrieve Payment Hub Ed25519 master public key
+paymentsRouter.get('/api/payments/receipt-public-key', (_req: Request, res: Response) => {
+  try {
+    const keypair = getReceiptSigningKeypair();
+    res.status(200).json({
+      status: 'ok',
+      algorithm: 'Ed25519',
+      signer_public_key: keypair.publicKey(),
+    });
+  } catch (err) {
+    if (err instanceof ReceiptMasterKeyMissingError) {
+      res.status(503).json({
+        status: 'error',
+        message: err.message,
+      });
+      return;
+    }
+    throw err;
+  }
+});
 
 // GET /api/payments - List payments with optional filters
 paymentsRouter.get('/api/payments/search', (req: Request, res: Response) => {
@@ -185,6 +214,100 @@ paymentsRouter.get('/api/payments/:id/events', (req: Request, res: Response) => 
     status: 'ok',
     payment_id: id,
     events,
+  });
+});
+
+// GET /api/payments/:id/receipt - Issue Ed25519 cryptographically signed proof-of-payment receipt
+paymentsRouter.get('/api/payments/:id/receipt', (req: Request, res: Response) => {
+  const id = req.params.id;
+  const payment = paymentRepository.findById(id);
+
+  if (!payment) {
+    res.status(404).json({
+      status: 'error',
+      message: `Payment with ID '${id}' not found.`,
+    });
+    return;
+  }
+
+  try {
+    const receipt = generatePaymentReceipt(payment);
+    res.status(200).json({
+      status: 'ok',
+      receipt,
+    });
+  } catch (err) {
+    if (err instanceof PaymentNotFinalizedError) {
+      res.status(409).json({
+        status: 'error',
+        message: err.message,
+        payment_status: err.currentStatus,
+      });
+      return;
+    }
+    if (err instanceof ReceiptMasterKeyMissingError) {
+      res.status(503).json({
+        status: 'error',
+        message: err.message,
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
+// POST /api/payments/:id/verify-receipt - Validate Ed25519 signed proof-of-payment receipt
+paymentsRouter.post('/api/payments/:id/verify-receipt', (req: Request, res: Response) => {
+  const id = req.params.id;
+  const body = req.body as Record<string, unknown> | undefined;
+
+  if (!body || typeof body !== 'object') {
+    res.status(400).json({
+      status: 'error',
+      valid: false,
+      message: 'Request body must contain a signed payment receipt.',
+    });
+    return;
+  }
+
+  const candidateReceipt = (
+    body.receipt && typeof body.receipt === 'object' ? body.receipt : body
+  ) as Partial<SignedPaymentReceipt>;
+
+  if (!candidateReceipt.payload || !candidateReceipt.signature) {
+    res.status(400).json({
+      status: 'error',
+      valid: false,
+      message: 'Both receipt payload and Ed25519 signature are required.',
+    });
+    return;
+  }
+
+  let masterPublicKey: string;
+  try {
+    masterPublicKey = getReceiptSigningKeypair().publicKey();
+  } catch (err) {
+    if (err instanceof ReceiptMasterKeyMissingError) {
+      res.status(503).json({
+        status: 'error',
+        valid: false,
+        message: err.message,
+      });
+      return;
+    }
+    throw err;
+  }
+
+  const indexedPayment = paymentRepository.findById(id);
+  const result = verifyPaymentReceipt(candidateReceipt, {
+    expectedPaymentId: id,
+    expectedSignerPublicKey: masterPublicKey,
+    indexedPayment,
+  });
+
+  res.status(200).json({
+    status: 'ok',
+    ...result,
   });
 });
 
